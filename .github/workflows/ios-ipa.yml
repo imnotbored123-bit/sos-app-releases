@@ -1,0 +1,45 @@
+name: ios-ipa
+
+# Builds the iPhone app on a Mac runner and saves the .ipa.
+# Needs APPLE_TEAM_ID + signing files for a signed installable build.
+# Without signing it still produces an unsigned archive for inspection.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'ios/**'
+      - '.github/workflows/ios-ipa.yml'
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Archive (no signing, proves the code compiles)
+        run: |
+          xcodebuild \
+            -project ios/MorallaSOS.xcodeproj \
+            -scheme MorallaSOS \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/MorallaSOS.xcarchive \
+            archive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Pack unsigned IPA folder
+        run: |
+          mkdir -p Payload
+          cp -R build/MorallaSOS.xcarchive/Products/Applications/MorallaSOS.app Payload/
+          zip -r Moralla-SOS-unsigned.ipa Payload
+          ls -lh Moralla-SOS-unsigned.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Moralla-SOS-unsigned-ipa
+          path: Moralla-SOS-unsigned.ipa
